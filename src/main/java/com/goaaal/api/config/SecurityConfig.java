@@ -21,24 +21,29 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final JwtTokenProvider jwtTokenProvider;
+
     @Value("${frontend.url}")
     private String frontendUrl;
+
+    public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Nouvelle syntaxe pour désactiver CSRF
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configure CORS avec un bean séparé
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/user/login", "/api/user/signup").permitAll() // Autorise l'accès public pour ces endpoints
-                        .requestMatchers("/actuator/health").permitAll() // Autoriser l'accès à Actuator health
-                        .requestMatchers("/api-docs/**","/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger.html", "/swagger-ui/index.html").permitAll()
-                        .anyRequest().authenticated() // Protège tous les autres endpoints
+                        .requestMatchers("/api/user/login", "/api/user/signup").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger.html", "/swagger-ui/index.html").permitAll()
+                        .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // Gère les sessions sans état (stateless)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // Ajoute le filtre JWT pour valider les tokens avant chaque requête
-        http.addFilterBefore(new JWTAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JWTAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -46,7 +51,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(frontendUrl)); // Changez pour le domaine de votre front-end
+        configuration.setAllowedOrigins(List.of(frontendUrl));
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
